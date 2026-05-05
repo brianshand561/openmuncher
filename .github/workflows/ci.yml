@@ -1,0 +1,26 @@
+name: ci
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - name: Run unit tests (excluding integration)
+        run: npx vitest run --exclude '**/integration.test.ts'
+      - name: Build CLI
+        run: npm run -w @openmuncher/cli build
