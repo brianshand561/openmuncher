@@ -1,6 +1,6 @@
 {
-  "name": "@openmuncher/cli",
-  "version": "0.0.0",
+  "name": "openmuncher",
+  "version": "0.1.0",
   "description": "Burn AI tokens deliberately for spectacle",
   "type": "module",
   "bin": { "openmuncher": "dist/index.js" },

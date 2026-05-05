@@ -5,6 +5,5 @@
     "outDir": "dist",
     "types": ["node"]
   },
-  "include": ["bin/**/*", "lib/**/*", "lambda/**/*"],
-  "references": [{ "path": "../shared" }]
+  "include": ["bin/**/*", "lib/**/*", "lambda/**/*"]
 }
