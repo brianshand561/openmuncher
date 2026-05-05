@@ -8,17 +8,26 @@ describe('countTokens', () => {
     expect(n).toBeLessThan(20);
   });
 
-  it('uses tiktoken for gpt models', () => {
+  it('uses tiktoken for gpt-4o', () => {
     const n = countTokens('hello world hello world', 'gpt-4o');
     expect(n).toBeGreaterThan(0);
     expect(n).toBeLessThan(20);
   });
 
-  it('estimates char/4 when tokenizer fails to load (synthetic case)', () => {
-    // 200-char input → 50-token estimate
+  it('uses tiktoken for gpt-5', () => {
+    const n = countTokens('hello world hello world', 'gpt-5');
+    expect(n).toBeGreaterThan(0);
+    expect(n).toBeLessThan(20);
+  });
+
+  it('uses tiktoken for o1', () => {
+    const n = countTokens('hello world hello world', 'o1');
+    expect(n).toBeGreaterThan(0);
+    expect(n).toBeLessThan(20);
+  });
+
+  it('estimates char/4 when forceEstimator is set', () => {
     const text = 'x'.repeat(200);
-    // Force the estimator path by passing a model id whose tokenizer we route to char/4.
-    // We expose `countTokensWithEstimator` for this; alternative: make countTokens accept a `forceEstimator` flag.
     const n = countTokens(text, 'claude-opus-4-7', { forceEstimator: true });
     expect(n).toBe(50);
   });

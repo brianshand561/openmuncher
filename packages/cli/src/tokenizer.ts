@@ -8,12 +8,27 @@ interface Options {
   forceEstimator?: boolean;
 }
 
+/** Per-model GPT/o encoding. Anthropic models use their own tokenizer (no entry here). */
+const GPT_ENCODING: Partial<Record<ModelId, 'cl100k_base' | 'o200k_base'>> = {
+  'gpt-5': 'o200k_base',
+  'gpt-4o': 'o200k_base',
+  'o1': 'o200k_base',
+};
+
 function estimate(text: string): number {
   return Math.ceil(text.length / 4);
 }
 
 let claudeTokenizer: { countTokens: (s: string) => number } | undefined;
-let gptEncoding: { encode: (s: string) => Uint32Array } | undefined;
+const gptEncodings = new Map<string, { encode: (s: string) => Uint32Array }>();
+
+const warned = new Set<string>();
+function warnOnce(key: string, err: unknown): void {
+  if (warned.has(key)) return;
+  warned.add(key);
+  const msg = err instanceof Error ? err.message : String(err);
+  process.stderr.write(`[openmuncher] ${key} tokenizer unavailable, using estimator: ${msg}\n`);
+}
 
 function loadClaude() {
   if (claudeTokenizer) return claudeTokenizer;
@@ -24,23 +39,34 @@ function loadClaude() {
   return claudeTokenizer;
 }
 
-function loadGpt() {
-  if (gptEncoding) return gptEncoding;
+function loadGpt(encoding: 'cl100k_base' | 'o200k_base') {
+  const cached = gptEncodings.get(encoding);
+  if (cached) return cached;
   const mod = require('tiktoken') as { get_encoding: (n: string) => { encode: (s: string) => Uint32Array } };
-  gptEncoding = mod.get_encoding('cl100k_base');
-  return gptEncoding;
+  const enc = mod.get_encoding(encoding);
+  gptEncodings.set(encoding, enc);
+  return enc;
 }
 
 export function countTokens(text: string, model: ModelId, opts: Options = {}): number {
   if (text.length === 0) return 0;
   if (opts.forceEstimator) return estimate(text);
-  try {
-    if (model.startsWith('claude-')) return loadClaude().countTokens(text);
-    if (model.startsWith('gpt-') || model.startsWith('o')) {
-      return loadGpt().encode(text).length;
+  if (model.startsWith('claude-')) {
+    try {
+      return loadClaude().countTokens(text);
+    } catch (err) {
+      warnOnce('claude', err);
+      return estimate(text);
     }
-  } catch {
-    // Native binding miss, etc. — fall through.
+  }
+  const gptEnc = GPT_ENCODING[model];
+  if (gptEnc) {
+    try {
+      return loadGpt(gptEnc).encode(text).length;
+    } catch (err) {
+      warnOnce('gpt', err);
+      return estimate(text);
+    }
   }
   return estimate(text);
 }
