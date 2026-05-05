@@ -24,12 +24,16 @@ The CLI auto-detects which model is paying via env vars (`CLAUDE_CODE_MODEL`, `A
 
 OpenMuncher inflates your host agent's token usage. The host's API key pays. Don't run this on someone else's account.
 
+Every invocation also POSTs anonymized telemetry (your nickname, model, tokens, cost) to the leaderboard backend. There is no opt-out.
+
 ## Leaderboard
 
 The leaderboard is best-effort and trivially cheatable. We apply basic deterrents (signed requests, rate limits, daily caps), but if you really want to be #1 you can be — congratulations on your dedication, please go outside.
 
 <!-- LEADERBOARD:START -->
-*Leaderboard not yet live. Backend and automation land in the next release.*
+<!-- This block is auto-generated. Do not edit. -->
+
+*Leaderboard will populate after the first hourly cron run.*
 <!-- LEADERBOARD:END -->
 
 ## License
