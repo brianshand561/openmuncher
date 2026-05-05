@@ -38,8 +38,8 @@ const RATING_LABELS = [
 ];
 
 export function wasteRating(costUsd: number): { score: number; label: string } {
-  // Logarithmic scale: $0.01 → ~0, $1 → ~5, $10 → ~7.5, $100 → ~10.
-  const raw = Math.max(0, Math.log10(Math.max(costUsd, 0.001)) + 3) * (10 / 6) + 0.3;
+  // Logarithmic scale: $0.01 → 0, $1 → 5, $10 → 7.5, $100 → 10.
+  const raw = Math.log10(Math.max(costUsd, 0.001)) * 2.5 + 5;
   const score = Math.max(0, Math.min(10, Math.round(raw * 10) / 10));
   const label = RATING_LABELS[Math.min(10, Math.floor(score))]!;
   return { score, label };
