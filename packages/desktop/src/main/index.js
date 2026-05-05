@@ -32,14 +32,19 @@ function createOverlay() {
     overlay.focus();
     return overlay;
   }
+  // Spawn at the cursor's current position. We deliberately do NOT follow the
+  // cursor afterwards — otherwise the overlay would dodge the user's click.
+  const point = screen.getCursorScreenPoint();
   overlay = new BrowserWindow({
+    x: Math.round(point.x - OVERLAY_W / 2),
+    y: Math.round(point.y - OVERLAY_H / 2),
     width: OVERLAY_W,
     height: OVERLAY_H,
     transparent: true,
     frame: false,
     alwaysOnTop: true,
     resizable: false,
-    movable: false,
+    movable: true, // user can drag it
     focusable: true,
     skipTaskbar: true,
     hasShadow: false,
@@ -53,20 +58,6 @@ function createOverlay() {
   overlay.setAlwaysOnTop(true, 'screen-saver');
   overlay.loadFile(path.join(__dirname, '..', 'renderer', 'overlay.html'));
   overlay.on('closed', () => { overlay = null; });
-
-  const follow = () => {
-    if (!overlay || overlay.isDestroyed()) return;
-    const point = screen.getCursorScreenPoint();
-    overlay.setBounds({
-      x: Math.round(point.x + 16),
-      y: Math.round(point.y + 16),
-      width: OVERLAY_W,
-      height: OVERLAY_H,
-    });
-  };
-  follow();
-  const interval = setInterval(follow, FOLLOW_INTERVAL_MS);
-  overlay.on('closed', () => clearInterval(interval));
   return overlay;
 }
 
