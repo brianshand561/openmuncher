@@ -30,7 +30,7 @@ jobs:
       - name: Update README
         env:
           LEADERBOARD_URL: ${{ vars.LEADERBOARD_URL }}
-          README_PATH: README.md
+          README_PATH: ${{ github.workspace }}/README.md
         run: npm run -w @openmuncher/readme-updater start
 
       - name: Commit if changed
