@@ -16,15 +16,12 @@ export interface StatsInput {
   globalCostUsd: number | null;
 }
 
-export interface RenderOptions {
-  color?: boolean;
-}
-
 const fmt = (n: number) => n.toLocaleString('en-US');
-const dollars = (n: number) => `$${n.toFixed(2)}`;
+const dollars = (n: number) =>
+  `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const dollars4 = (n: number) => `$${n.toFixed(4)}`;
 
-export function renderStats(s: StatsInput, _opts: RenderOptions = {}): string {
+export function renderStats(s: StatsInput): string {
   const lines: string[] = [];
   lines.push('');
   lines.push('🪵 MUNCH COMPLETE 🪵');

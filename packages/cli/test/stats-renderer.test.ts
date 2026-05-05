@@ -18,7 +18,7 @@ const FIXTURE: StatsInput = {
 
 describe('renderStats', () => {
   it('produces the expected fixed shape', () => {
-    const out = renderStats(FIXTURE, { color: false });
+    const out = renderStats(FIXTURE);
     expect(out).toMatchInlineSnapshot(`
       "
       🪵 MUNCH COMPLETE 🪵
@@ -35,26 +35,23 @@ describe('renderStats', () => {
         🌊 0.02 mL of ocean evaporated
 
       Lifetime: 2,100,034 tokens · $48.71
-      Global:   893,421,044 tokens · $19847.12
+      Global:   893,421,044 tokens · $19,847.12
       "
     `);
   });
 
   it('marks output cost as (est.)', () => {
-    const out = renderStats(FIXTURE, { color: false });
+    const out = renderStats(FIXTURE);
     expect(out).toMatch(/est\./);
   });
 
   it('includes the global counter', () => {
-    const out = renderStats(FIXTURE, { color: false });
+    const out = renderStats(FIXTURE);
     expect(out).toContain('893,421,044');
   });
 
   it('shows "(offline)" when global is null', () => {
-    const out = renderStats(
-      { ...FIXTURE, globalTokens: null, globalCostUsd: null },
-      { color: false },
-    );
+    const out = renderStats({ ...FIXTURE, globalTokens: null, globalCostUsd: null });
     expect(out).toContain('(offline)');
   });
 });
