@@ -15,9 +15,8 @@ const { spawn } = require('node:child_process');
 let tray = null;
 let overlay = null;
 
-const OVERLAY_W = 240;
-const OVERLAY_H = 240;
-const FOLLOW_INTERVAL_MS = 16; // ~60fps
+const OVERLAY_W = 280;
+const OVERLAY_H = 320;
 
 const log = (...args) => console.log('[openmuncher-desktop]', ...args);
 

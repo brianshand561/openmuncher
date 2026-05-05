@@ -15,16 +15,15 @@
   }
   #stage {
     position: relative;
-    width: 240px; height: 240px;
-    cursor: pointer;
+    width: 280px; height: 320px;
     -webkit-app-region: drag;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 22px;
+    box-sizing: border-box;
   }
-  /* The big circle is the click target. The drag region above is overridden
-     for the inner circle so clicks register instead of starting a window drag. */
   #disc {
-    position: absolute;
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
     width: 200px; height: 200px;
     border-radius: 50%;
     background: radial-gradient(circle, rgba(40,40,40,0.92), rgba(20,20,20,0.85));
@@ -33,16 +32,16 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    -webkit-app-region: no-drag; /* clicks register, not drags */
+    cursor: pointer;
+    -webkit-app-region: no-drag;
     transition: transform 120ms cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 120ms;
+    position: relative;
   }
   #disc:hover {
-    transform: translate(-50%, -50%) scale(1.04);
+    transform: scale(1.04);
     box-shadow: 0 16px 50px rgba(0,0,0,0.7), inset 0 0 0 2px rgba(255,255,255,0.18);
   }
-  #disc:active {
-    transform: translate(-50%, -50%) scale(0.96);
-  }
+  #disc:active { transform: scale(0.96); }
   #mascot {
     font-size: 96px;
     line-height: 1;
@@ -68,15 +67,6 @@
     opacity: 0.85;
     pointer-events: none;
   }
-  #hint {
-    position: absolute;
-    bottom: 8px; left: 0; right: 0;
-    text-align: center;
-    color: rgba(255,255,255,0.55);
-    font-size: 10px;
-    text-shadow: 0 1px 4px rgba(0,0,0,0.8);
-    pointer-events: none;
-  }
   .splat {
     position: absolute;
     top: 50%; left: 50%;
@@ -85,9 +75,7 @@
     pointer-events: none;
     opacity: 0;
   }
-  .splat.fire {
-    animation: splat 600ms ease-out forwards;
-  }
+  .splat.fire { animation: splat 600ms ease-out forwards; }
   @keyframes splat {
     0%   { transform: translate(-50%, -50%) scale(0)   rotate(0deg);   opacity: 1; }
     50%  { transform: translate(-50%, -50%) scale(1.5) rotate(-15deg); opacity: 1; }
@@ -95,44 +83,52 @@
   }
   #closebtn {
     position: absolute;
-    top: 8px; right: 8px;
+    top: 4px; right: 4px;
     width: 22px; height: 22px;
     border-radius: 50%;
-    background: rgba(0,0,0,0.55);
+    background: rgba(0,0,0,0.7);
     color: #fff;
     font-size: 14px;
     line-height: 22px;
     text-align: center;
     cursor: pointer;
     -webkit-app-region: no-drag;
-    z-index: 10;
+    z-index: 20;
   }
-  #closebtn:hover { background: rgba(220, 50, 50, 0.85); }
-  #counter {
-    position: absolute;
-    top: 8px; left: 8px;
-    color: rgba(255,255,255,0.85);
+  #closebtn:hover { background: rgba(220, 50, 50, 0.95); }
+  #stats {
+    margin-top: 14px;
+    padding: 8px 14px;
+    border-radius: 14px;
+    background: rgba(15, 15, 15, 0.92);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.08);
+    color: #d4d4d4;
     font-size: 11px;
     font-variant-numeric: tabular-nums;
-    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+    text-align: center;
+    line-height: 1.6;
+    min-width: 200px;
     -webkit-app-region: no-drag;
-    pointer-events: none;
-    line-height: 1.4;
   }
-  #counter b { color: #ffd25e; font-weight: 600; }
-  #counter .err { color: #ff7a7a; }
+  #stats .row { white-space: nowrap; }
+  #stats b { color: #ffd25e; font-weight: 600; }
+  #stats .err { color: #ff7a7a; }
+  #stats .muted { color: rgba(255,255,255,0.45); }
 </style>
 </head>
 <body>
   <div id="stage">
-    <span id="counter">0</span>
     <span id="closebtn">×</span>
     <div id="disc">
       <span id="mascot">🪵</span>
       <span id="label">Click to munch</span>
       <span id="splat" class="splat">💥</span>
     </div>
-    <div id="hint">drag corners to move · × to close</div>
+    <div id="stats">
+      <div class="row" id="row1"><b>0</b> clicks</div>
+      <div class="row muted" id="row2">no munches yet</div>
+      <div class="row muted" id="row3">global: —</div>
+    </div>
   </div>
 <script>
   const MASCOTS = [
@@ -152,16 +148,19 @@
   let lifetimeTokens = null;
   let lifetimeCostUsd = null;
   let globalTokens = null;
+  let globalCostUsd = null;
   const fmt = (n) => n.toLocaleString('en-US');
-  const dollars = (n) => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const dollars = (n) =>
+    `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   const mascotEl = document.getElementById('mascot');
   const labelEl = document.getElementById('label');
   const splatEl = document.getElementById('splat');
   const closeBtn = document.getElementById('closebtn');
-  const counterEl = document.getElementById('counter');
   const discEl = document.getElementById('disc');
-  const hintEl = document.getElementById('hint');
+  const row1 = document.getElementById('row1');
+  const row2 = document.getElementById('row2');
+  const row3 = document.getElementById('row3');
 
   function setMascot(i) {
     idx = i % MASCOTS.length;
@@ -171,32 +170,43 @@
     labelEl.textContent = m.name;
   }
 
-  function refreshCounter() {
+  function refreshStats() {
     if (lastError) {
-      counterEl.innerHTML = `<span class="err">⚠ ${lastError}</span>`;
+      row1.innerHTML = `<b>${clicks}</b> click${clicks === 1 ? '' : 's'}`;
+      row2.className = 'row';
+      row2.innerHTML = `<span class="err">⚠ ${lastError}</span>`;
+      row3.className = 'row muted';
+      row3.textContent = 'global: —';
       return;
     }
-    const lines = [];
-    lines.push(`<b>${clicks}</b> click${clicks === 1 ? '' : 's'}${pending ? ' · ' + pending + ' pending' : ''}`);
+    row1.className = 'row';
+    row1.innerHTML = `<b>${clicks}</b> click${clicks === 1 ? '' : 's'}${pending ? ` · ${pending} pending` : ''}`;
     if (lifetimeTokens != null && lifetimeCostUsd != null) {
-      lines.push(`${fmt(lifetimeTokens)} tokens · ${dollars(lifetimeCostUsd)}`);
+      row2.className = 'row';
+      row2.innerHTML = `${fmt(lifetimeTokens)} tokens · ${dollars(lifetimeCostUsd)}`;
+    } else {
+      row2.className = 'row muted';
+      row2.textContent = 'no munches yet';
     }
     if (globalTokens != null) {
-      lines.push(`global: ${fmt(globalTokens)}`);
+      row3.className = 'row muted';
+      row3.innerHTML = `global: ${fmt(globalTokens)}` + (globalCostUsd != null ? ` · ${dollars(globalCostUsd)}` : '');
+    } else {
+      row3.className = 'row muted';
+      row3.textContent = 'global: —';
     }
-    counterEl.innerHTML = lines.join('<br>');
   }
 
   function chomp() {
     const m = MASCOTS[idx];
     mascotEl.classList.remove('chomp');
     splatEl.classList.remove('fire');
-    void mascotEl.offsetWidth; // force reflow
+    void mascotEl.offsetWidth;
     mascotEl.classList.add('chomp');
     splatEl.classList.add('fire');
     clicks++;
     pending++;
-    refreshCounter();
+    refreshStats();
     window.openmuncher.munch(m.name);
     setTimeout(() => setMascot(idx + 1), 420);
   }
@@ -210,8 +220,9 @@
       if (r.lifetimeTokens != null) lifetimeTokens = r.lifetimeTokens;
       if (r.lifetimeCostUsd != null) lifetimeCostUsd = r.lifetimeCostUsd;
       if (r.globalTokens != null) globalTokens = r.globalTokens;
+      if (r.globalCostUsd != null) globalCostUsd = r.globalCostUsd;
     }
-    refreshCounter();
+    refreshStats();
   });
 
   discEl.addEventListener('click', chomp);
@@ -221,7 +232,7 @@
   });
 
   setMascot(Math.floor(Math.random() * MASCOTS.length));
-  refreshCounter();
+  refreshStats();
 </script>
 </body>
 </html>
