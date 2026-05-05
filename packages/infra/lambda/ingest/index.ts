@@ -1,6 +1,7 @@
 import {
   DynamoDBClient,
   TransactWriteItemsCommand,
+  UpdateItemCommand,
   ConditionalCheckFailedException,
 } from '@aws-sdk/client-dynamodb';
 import type { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from 'aws-lambda';
@@ -106,8 +107,6 @@ export const handler = async (event: APIGatewayProxyEventV2): Promise<APIGateway
         UpdateExpression:
           'ADD totalTokens :t, totalCostUsd :c, munchCount :one ' +
           'SET lastMunchTs = :ts, ' +
-          'leaderboardDate = if_not_exists(leaderboardDate, :today), ' +
-          'leaderboardTokens = if_not_exists(leaderboardTokens, :zero), ' +
           'gsiPk = :gsiPk, ' +
           'nickname = :nick',
         ExpressionAttributeValues: {
@@ -115,41 +114,54 @@ export const handler = async (event: APIGatewayProxyEventV2): Promise<APIGateway
           ':c': { N: String(ev.costUsd) },
           ':one': { N: '1' },
           ':ts': { N: String(ev.ts) },
-          ':today': { S: todayUtc },
-          ':zero': { N: '0' },
           ':gsiPk': { S: 'USERS' },
           ':nick': { S: ev.nickname },
         },
       },
     });
-
-    transactItems.push({
-      Update: {
-        TableName: TABLE_NAME,
-        Key: { pk: { S: userKey.pk }, sk: { S: userKey.sk } },
-        UpdateExpression:
-          'SET leaderboardDate = :today, ' +
-          'leaderboardTokens = if_not_exists(leaderboardTokens, :zero) + :t',
-        ConditionExpression:
-          'attribute_not_exists(leaderboardDate) OR leaderboardDate <> :today OR leaderboardTokens < :cap',
-        ExpressionAttributeValues: {
-          ':today': { S: todayUtc },
-          ':zero': { N: '0' },
-          ':t': { N: String(totalTokens) },
-          ':cap': { N: String(LEADERBOARD_DAILY_CAP) },
-        },
-      },
-    });
   }
 
+  let txFailedDup = false;
   try {
     await ddb.send(new TransactWriteItemsCommand({ TransactItems: transactItems }));
   } catch (err) {
-    if (isCcfe(err)) {
-      // Duplicate eventId or leaderboard cap reached — treat as soft success.
+    const name = (err as { name?: string })?.name ?? '';
+    if (isCcfe(err) || name === 'TransactionCanceledException') {
+      // Duplicate eventId (Put condition failed) or leaderboard cap reached.
+      // Skip the leaderboard bump — this event has already been counted.
+      txFailedDup = true;
     } else {
       console.error('transact write failed', err);
       return reply(503, { ok: false, error: 'storage error' });
+    }
+  }
+
+  // Leaderboard bump runs OUTSIDE the transaction (DynamoDB forbids two updates on the same
+  // item within one TransactWrite). Conditional-on-cap; over-cap failures are silently ignored.
+  if (!banned && !txFailedDup) {
+    try {
+      await ddb.send(
+        new UpdateItemCommand({
+          TableName: TABLE_NAME,
+          Key: { pk: { S: userKey.pk }, sk: { S: userKey.sk } },
+          UpdateExpression:
+            'SET leaderboardDate = :today, ' +
+            'leaderboardTokens = if_not_exists(leaderboardTokens, :zero) + :t',
+          ConditionExpression:
+            'attribute_not_exists(leaderboardDate) OR leaderboardDate <> :today OR leaderboardTokens < :cap',
+          ExpressionAttributeValues: {
+            ':today': { S: todayUtc },
+            ':zero': { N: '0' },
+            ':t': { N: String(totalTokens) },
+            ':cap': { N: String(LEADERBOARD_DAILY_CAP) },
+          },
+        }),
+      );
+    } catch (err) {
+      if (!isCcfe(err)) {
+        console.error('leaderboard bump failed', err);
+        // Don't fail the whole request — leaderboard is best-effort.
+      }
     }
   }
 
