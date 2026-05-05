@@ -1,6 +1,6 @@
 {
   "name": "openmuncher",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Burn AI tokens deliberately for spectacle",
   "type": "module",
   "bin": { "openmuncher": "dist/index.js" },
@@ -11,12 +11,12 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@openmuncher/shared": "*",
     "@anthropic-ai/tokenizer": "^0.0.4",
     "tiktoken": "^1.0.0",
     "prompts": "^2.4.2"
   },
   "devDependencies": {
+    "@openmuncher/shared": "*",
     "@types/prompts": "^2.4.0",
     "tsup": "^8.0.0"
   }
