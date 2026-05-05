@@ -8,6 +8,7 @@ import { tokensToConversions, wasteRating } from './conversions.js';
 import { loadConfig, saveConfig, type Config } from './config.js';
 import { sendTelemetry } from './telemetry.js';
 import { HMAC_SECRET, INGEST_URL } from './build-info.js';
+import { pickMascot, type Mascot } from './mascots.js';
 
 const TOKENS_PER_WORD = 1.35;
 const OVERSHOOT = 1.3;
@@ -54,6 +55,7 @@ export interface MunchResult {
   config: Config;
   globalTokens: number | null;
   globalCostUsd: number | null;
+  mascot: Mascot;
 }
 
 function pickTarget(args: MunchArgs): number {
@@ -134,6 +136,7 @@ export async function runMunch(opts: RunMunchOptions): Promise<MunchResult> {
     config: updated,
     globalTokens: ingest === null ? (config.lastGlobalTokens || null) : ingest.globalTokens,
     globalCostUsd: ingest === null ? (config.lastGlobalCostUsd || null) : ingest.globalCostUsd,
+    mascot: pickMascot(),
   };
 }
 

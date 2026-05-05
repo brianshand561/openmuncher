@@ -22,6 +22,7 @@ describe('renderStats', () => {
     expect(out).toMatchInlineSnapshot(`
       "
       🪵 MUNCH COMPLETE 🪵
+      Mascot:      —
       Model:       claude-opus-4-7
       Input:         17,432 tokens   ($0.2615)
       Output:        ~3,510 tokens   ($0.2633 est.)

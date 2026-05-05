@@ -1,5 +1,7 @@
 import type { ModelId } from '@openmuncher/shared';
 import type { Conversions } from './conversions.js';
+import type { Mascot } from './mascots.js';
+import { colorize } from './mascots.js';
 
 export interface StatsInput {
   model: ModelId;
@@ -14,6 +16,8 @@ export interface StatsInput {
   lifetimeCostUsd: number;
   globalTokens: number | null;
   globalCostUsd: number | null;
+  /** Optional — when present, the trophy frame is embedded above the stats. */
+  mascot?: Mascot;
 }
 
 const fmt = (n: number) => n.toLocaleString('en-US');
@@ -22,9 +26,15 @@ const dollars = (n: number) =>
 const dollars4 = (n: number) => `$${n.toFixed(4)}`;
 
 export function renderStats(s: StatsInput): string {
+  const colorSupport = process.env.NO_COLOR === undefined && process.env.TERM !== 'dumb';
   const lines: string[] = [];
+  if (s.mascot) {
+    const trophy = colorSupport ? colorize(s.mascot.trophy, s.mascot.color) : s.mascot.trophy;
+    lines.push(trophy);
+  }
   lines.push('');
   lines.push('🪵 MUNCH COMPLETE 🪵');
+  lines.push(`Mascot:      ${s.mascot ? s.mascot.name : '—'}`);
   lines.push(`Model:       ${s.model}`);
   lines.push(`Input:       ${fmt(s.inputTokens).padStart(8)} tokens   (${dollars4(s.inputCostUsd)})`);
   lines.push(`Output:      ${('~' + fmt(s.outputTokensEst)).padStart(8)} tokens   (${dollars4(s.outputCostUsdEst)} est.)`);

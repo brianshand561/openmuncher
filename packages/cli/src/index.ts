@@ -54,7 +54,7 @@ async function main() {
   });
 
   process.stdout.write(result.payloadText);
-  await runAnimation({ disabled: !argv.animation });
+  await runAnimation({ disabled: !argv.animation, mascot: result.mascot });
 
   const rendered = renderStats({
     model: result.model,
@@ -69,6 +69,7 @@ async function main() {
     lifetimeCostUsd: result.config.lifetimeCostUsd,
     globalTokens: result.globalTokens,
     globalCostUsd: result.globalCostUsd,
+    mascot: result.mascot,
   });
   process.stdout.write(rendered);
 }
