@@ -15,8 +15,8 @@ const { spawn } = require('node:child_process');
 let tray = null;
 let overlay = null;
 
-const OVERLAY_W = 280;
-const OVERLAY_H = 320;
+const OVERLAY_W = 320;
+const OVERLAY_H = 480;
 
 const log = (...args) => console.log('[openmuncher-desktop]', ...args);
 
