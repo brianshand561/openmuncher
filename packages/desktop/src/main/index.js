@@ -155,20 +155,55 @@ function setupTray() {
   log('tray installed; look for a 🪵 in your menu bar (top-right on macOS)');
 }
 
+function parseFooter(text) {
+  const totalCostMatch = text.match(/Total cost:\s+~?\$([\d,.]+)/);
+  const lifetimeMatch = text.match(/Lifetime:\s+([\d,]+)\s+tokens\s+·\s+\$([\d,.]+)/);
+  const globalMatch = text.match(/Global:\s+([\d,]+)\s+tokens\s+·\s+\$([\d,.]+)/);
+  const num = (s) => Number(String(s).replace(/,/g, ''));
+  return {
+    totalCostUsd: totalCostMatch ? num(totalCostMatch[1]) : null,
+    lifetimeTokens: lifetimeMatch ? num(lifetimeMatch[1]) : null,
+    lifetimeCostUsd: lifetimeMatch ? num(lifetimeMatch[2]) : null,
+    globalTokens: globalMatch ? num(globalMatch[1]) : null,
+    globalCostUsd: globalMatch ? num(globalMatch[2]) : null,
+  };
+}
+
 ipcMain.on('munch-clicked', (_event, mascotName) => {
   log('munch:', mascotName);
+  const sendResult = (payload) => {
+    if (overlay && !overlay.isDestroyed()) {
+      overlay.webContents.send('munch-result', { mascotName, ...payload });
+    }
+  };
+  let stdoutBuf = '';
+  let stderrBuf = '';
+  let cli;
   try {
-    const cli = spawn('openmuncher', ['--no-animation', '--intensity', 'light'], {
-      stdio: 'ignore',
-      detached: true,
+    cli = spawn('openmuncher', ['--no-animation', '--intensity', 'light'], {
+      stdio: ['ignore', 'pipe', 'pipe'],
     });
-    cli.unref();
   } catch (err) {
-    log('openmuncher CLI not found; visual gag only', err && err.message);
+    log('CLI spawn failed:', err && err.message);
+    sendResult({ ok: false, error: 'CLI not found on PATH' });
+    return;
   }
-  if (overlay && !overlay.isDestroyed()) {
-    overlay.webContents.send('munch-fired', mascotName);
-  }
+  cli.on('error', (err) => {
+    log('CLI error:', err.message);
+    sendResult({ ok: false, error: err.message });
+  });
+  cli.stdout.on('data', (chunk) => { stdoutBuf += chunk.toString(); });
+  cli.stderr.on('data', (chunk) => { stderrBuf += chunk.toString(); });
+  cli.on('close', (code) => {
+    if (code !== 0) {
+      log('CLI exit', code, 'stderr:', stderrBuf.slice(0, 200));
+      sendResult({ ok: false, error: stderrBuf.trim() || `exit ${code}` });
+      return;
+    }
+    const parsed = parseFooter(stdoutBuf);
+    log('munch result:', parsed);
+    sendResult({ ok: true, ...parsed });
+  });
 });
 
 ipcMain.on('overlay-dismiss', () => dismissOverlay());
