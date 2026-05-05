@@ -33,7 +33,13 @@ The leaderboard is best-effort and trivially cheatable. We apply basic deterrent
 <!-- LEADERBOARD:START -->
 <!-- This block is auto-generated. Do not edit. -->
 
-*Leaderboard will populate after the first hourly cron run.*
+| Rank | Wastrel | Tokens Burned | Money Incinerated | Munches |
+|------|---------|---------------|-------------------|---------|
+| 🥇 | brian | 8,510 | $0.02 | 1 |
+| 🥈 | brianshand561 | 5,429 | $0.02 | 1 |
+
+**Global counter:** 13,939 tokens · $0.03 incinerated.
+*Last updated: 2026-05-05T22:53:11.459Z*
 <!-- LEADERBOARD:END -->
 
 ## License
