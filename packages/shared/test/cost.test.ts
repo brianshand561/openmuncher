@@ -8,6 +8,12 @@ describe('computeCost', () => {
     expect(computeCost(1_000_000, 1_000_000, 'claude-opus-4-7')).toBe(90);
   });
 
+  it('weights input and output prices independently', () => {
+    // claude-opus-4-7: $15/M input, $75/M output. Asymmetric so a swap is detectable.
+    expect(computeCost(1_000_000, 0, 'claude-opus-4-7')).toBe(15);
+    expect(computeCost(0, 1_000_000, 'claude-opus-4-7')).toBe(75);
+  });
+
   it('rounds to 6 decimal places', () => {
     // 1 input token at $15/M = 0.000015. Output 0. Result: 0.000015 (exact at 6dp).
     expect(computeCost(1, 0, 'claude-opus-4-7')).toBe(0.000015);
