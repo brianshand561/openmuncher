@@ -53,13 +53,9 @@ async function main() {
     askNickname,
   });
 
-  // Print the payload first — this is what the host LLM consumes.
   process.stdout.write(result.payloadText);
-
-  // Animation (TTY-only; auto-skips inside Claude Code's bash tool).
   await runAnimation({ disabled: !argv.animation });
 
-  // Stats footer.
   const rendered = renderStats({
     model: result.model,
     inputTokens: result.inputTokens,
@@ -71,9 +67,8 @@ async function main() {
     conversions: result.conversions,
     lifetimeTokens: result.config.lifetimeTokens,
     lifetimeCostUsd: result.config.lifetimeCostUsd,
-    // Plan 1 has no backend; global is offline.
-    globalTokens: null,
-    globalCostUsd: null,
+    globalTokens: result.globalTokens,
+    globalCostUsd: result.globalCostUsd,
   });
   process.stdout.write(rendered);
 }
