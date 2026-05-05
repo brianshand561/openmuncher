@@ -6,12 +6,10 @@
  * overlay → mascot chomps + cycles to the next animal + invokes the openmuncher
  * CLI as a child process to record a real munch (if openmuncher is on PATH;
  * otherwise just the visual gag plays).
- *
- * Cross-platform: macOS, Linux, Windows. Tray icon paths vary; cursor tracking
- * uses Electron's screen.getCursorScreenPoint() which is portable.
  */
 const { app, BrowserWindow, Tray, Menu, ipcMain, screen, nativeImage } = require('electron');
 const path = require('node:path');
+const fs = require('node:fs');
 const { spawn } = require('node:child_process');
 
 let tray = null;
@@ -21,12 +19,14 @@ const OVERLAY_W = 240;
 const OVERLAY_H = 240;
 const FOLLOW_INTERVAL_MS = 16; // ~60fps
 
+const log = (...args) => console.log('[openmuncher-desktop]', ...args);
+
 function trayIconPath() {
-  // Same icon for all platforms; macOS template-mode is set below.
   return path.join(__dirname, '..', '..', 'assets', 'tray.png');
 }
 
 function createOverlay() {
+  log('createOverlay');
   if (overlay && !overlay.isDestroyed()) {
     overlay.show();
     overlay.focus();
@@ -54,11 +54,9 @@ function createOverlay() {
   overlay.loadFile(path.join(__dirname, '..', 'renderer', 'overlay.html'));
   overlay.on('closed', () => { overlay = null; });
 
-  // Cursor follower.
   const follow = () => {
     if (!overlay || overlay.isDestroyed()) return;
     const point = screen.getCursorScreenPoint();
-    // Offset so the overlay anchors near the cursor without covering it.
     overlay.setBounds({
       x: Math.round(point.x + 16),
       y: Math.round(point.y + 16),
@@ -81,10 +79,12 @@ function dismissOverlay() {
 
 function buildTrayMenu() {
   return Menu.buildFromTemplate([
+    { label: 'OpenMuncher Desktop', enabled: false },
+    { type: 'separator' },
     { label: 'Spawn Muncher', click: () => createOverlay() },
     { label: 'Dismiss Muncher', click: () => dismissOverlay() },
     { type: 'separator' },
-    { label: 'About OpenMuncher', click: () => {
+    { label: 'View on GitHub', click: () => {
         require('electron').shell.openExternal('https://github.com/brianshand561/OpenMuncher');
       } },
     { type: 'separator' },
@@ -92,37 +92,88 @@ function buildTrayMenu() {
   ]);
 }
 
+/**
+ * Build a high-contrast 22×22 RGBA buffer programmatically so we don't depend
+ * on a fragile PNG asset. Renders a chunky log silhouette readable at any
+ * menu-bar size. Returns a NativeImage scaled to the platform's tray size.
+ */
+function buildTrayImage() {
+  const W = 22, H = 22;
+  const buf = Buffer.alloc(W * H * 4); // RGBA
+  // Coordinates of a horizontal log: rounded-rect body from (3,8) to (18,14).
+  const setPx = (x, y, r, g, b, a) => {
+    if (x < 0 || y < 0 || x >= W || y >= H) return;
+    const i = (y * W + x) * 4;
+    buf[i] = r; buf[i + 1] = g; buf[i + 2] = b; buf[i + 3] = a;
+  };
+  const inLog = (x, y) => {
+    if (y < 8 || y > 14) return false;
+    if (x < 3 || x > 18) return false;
+    // round the corners
+    if ((y === 8 || y === 14) && (x === 3 || x === 18)) return false;
+    return true;
+  };
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      if (inLog(x, y)) setPx(x, y, 0, 0, 0, 255);
+    }
+  }
+  // Two grain rings on the left end (x≈5, y≈11).
+  const drawRing = (cx, cy, rx, ry) => {
+    for (let y = -ry; y <= ry; y++) {
+      for (let x = -rx; x <= rx; x++) {
+        const ratio = (x * x) / (rx * rx) + (y * y) / (ry * ry);
+        if (ratio > 0.7 && ratio < 1.1) {
+          // Punch transparency through the body to suggest ring lines.
+          setPx(cx + x, cy + y, 255, 255, 255, 0);
+        }
+      }
+    }
+  };
+  drawRing(5, 11, 2, 2);
+  return nativeImage.createFromBuffer(buf, { width: W, height: H });
+}
+
 function setupTray() {
   let img = nativeImage.createFromPath(trayIconPath());
   if (img.isEmpty()) {
-    // Fallback for missing icon: draw a tiny placeholder so the tray still appears.
-    img = nativeImage.createFromBuffer(Buffer.from(FALLBACK_PNG_BASE64, 'base64'));
+    log('tray.png missing or unreadable, using procedural icon');
+    img = buildTrayImage();
+  } else {
+    log('tray.png loaded from', trayIconPath());
   }
-  if (process.platform === 'darwin') img.setTemplateImage(true);
-  tray = new Tray(img.resize({ width: 18, height: 18 }));
-  tray.setToolTip('OpenMuncher');
+  // Always rebuild procedurally on macOS — guarantees it shows up regardless of
+  // whether the asset PNG renders correctly as a template image.
+  if (process.platform === 'darwin') {
+    img = buildTrayImage();
+    img.setTemplateImage(true);
+  }
+  tray = new Tray(img);
+  // On macOS, also set a text title so the tray is visible even on cluttered menu bars.
+  // This puts a literal 🪵 in the menu bar next to the icon.
+  if (process.platform === 'darwin') {
+    tray.setTitle('🪵');
+  }
+  tray.setToolTip('OpenMuncher — click to spawn the muncher');
   tray.setContextMenu(buildTrayMenu());
   tray.on('click', () => {
+    log('tray click');
     if (overlay && !overlay.isDestroyed()) dismissOverlay();
     else createOverlay();
   });
+  log('tray installed; look for a 🪵 in your menu bar (top-right on macOS)');
 }
 
-// Tiny 16x16 transparent PNG with a 🪵 silhouette dot, used only when assets/tray.png is missing.
-const FALLBACK_PNG_BASE64 =
-  'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAQAAAC1+jfqAAAAOElEQVR42mNgGAWjYBSMglEwCkbBKBgFw4DTw8QAxv8GBgZGwSgYBaNgFIyCUTAKRsEoGAUjBQAA1GoAAQ50pYwAAAAASUVORK5CYII=';
-
 ipcMain.on('munch-clicked', (_event, mascotName) => {
-  // Spawn the openmuncher CLI as a side effect so each click is a real burn.
-  // Failures are silent — the app still works as a visual toy without the CLI.
+  log('munch:', mascotName);
   try {
     const cli = spawn('openmuncher', ['--no-animation', '--intensity', 'light'], {
       stdio: 'ignore',
       detached: true,
     });
     cli.unref();
-  } catch {
-    // No-op.
+  } catch (err) {
+    log('openmuncher CLI not found; visual gag only', err && err.message);
   }
   if (overlay && !overlay.isDestroyed()) {
     overlay.webContents.send('munch-fired', mascotName);
@@ -132,9 +183,17 @@ ipcMain.on('munch-clicked', (_event, mascotName) => {
 ipcMain.on('overlay-dismiss', () => dismissOverlay());
 
 app.whenReady().then(() => {
-  // No dock icon on macOS — this is a tray-only app.
+  log('app ready, platform:', process.platform);
+  // Hide dock icon on macOS — this is a tray-only app.
   if (app.dock) app.dock.hide();
-  setupTray();
+  try {
+    setupTray();
+  } catch (err) {
+    log('FATAL: tray setup failed:', err && err.stack ? err.stack : err);
+    app.quit();
+  }
+}).catch((err) => {
+  log('FATAL: whenReady failed:', err && err.stack ? err.stack : err);
 });
 
 app.on('window-all-closed', (e) => {
