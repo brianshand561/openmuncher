@@ -2,7 +2,7 @@ name: deploy-infra
 
 on:
   push:
-    branches: [main]
+    branches: [master]
     paths:
       - 'packages/infra/**'
       - 'packages/shared/**'
