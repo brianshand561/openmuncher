@@ -23,6 +23,13 @@
     padding-top: 22px;
     box-sizing: border-box;
   }
+  #stage.shake { animation: shake 220ms cubic-bezier(.36,.07,.19,.97) both; }
+  @keyframes shake {
+    10%, 90% { transform: translate(-1px, 0); }
+    20%, 80% { transform: translate(2px, 0); }
+    30%, 50%, 70% { transform: translate(-4px, 1px); }
+    40%, 60% { transform: translate(4px, -1px); }
+  }
   #disc {
     width: 200px; height: 200px;
     border-radius: 50%;
@@ -36,37 +43,87 @@
     -webkit-app-region: no-drag;
     transition: transform 120ms cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 120ms;
     position: relative;
+    overflow: visible;
   }
   #disc:hover {
     transform: scale(1.04);
     box-shadow: 0 16px 50px rgba(0,0,0,0.7), inset 0 0 0 2px rgba(255,255,255,0.18);
   }
   #disc:active { transform: scale(0.96); }
+  #disc.fury {
+    box-shadow: 0 16px 60px rgba(255, 80, 80, 0.55), inset 0 0 0 3px rgba(255, 200, 80, 0.55);
+    animation: pulse 600ms ease-in-out infinite alternate;
+  }
+  @keyframes pulse {
+    from { transform: scale(1); }
+    to   { transform: scale(1.025); }
+  }
   #mascot {
     font-size: 96px;
     line-height: 1;
     filter: drop-shadow(0 4px 8px rgba(0,0,0,0.5));
     pointer-events: none;
+    animation: idle 3.4s ease-in-out infinite;
+  }
+  @keyframes idle {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50%      { transform: translateY(-3px) rotate(-2deg); }
   }
   #mascot.chomp {
     animation: chomp 380ms cubic-bezier(0.34, 1.56, 0.64, 1);
   }
   @keyframes chomp {
     0%   { transform: scale(1)    rotate(0deg); }
-    25%  { transform: scale(1.4)  rotate(-12deg); }
-    50%  { transform: scale(0.85) rotate(8deg); }
-    75%  { transform: scale(1.2)  rotate(-6deg); }
+    25%  { transform: scale(1.5)  rotate(-14deg); }
+    50%  { transform: scale(0.8)  rotate(10deg); }
+    75%  { transform: scale(1.25) rotate(-8deg); }
     100% { transform: scale(1)    rotate(0deg); }
   }
   #label {
-    margin-top: 6px;
+    margin-top: 4px;
     color: #fff;
     font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 2px;
     opacity: 0.85;
     pointer-events: none;
+    min-height: 14px;
   }
+  #taunt {
+    position: absolute;
+    top: 12px; left: 0; right: 0;
+    text-align: center;
+    color: #ffd25e;
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    text-shadow: 0 2px 6px rgba(0,0,0,0.9);
+    opacity: 0;
+    pointer-events: none;
+  }
+  #taunt.show { animation: tauntpop 900ms ease-out forwards; }
+  @keyframes tauntpop {
+    0%   { transform: translateY(8px)  scale(0.8); opacity: 0; }
+    20%  { transform: translateY(0)    scale(1.1); opacity: 1; }
+    70%  { transform: translateY(-4px) scale(1);   opacity: 1; }
+    100% { transform: translateY(-12px) scale(0.95); opacity: 0; }
+  }
+  #combo {
+    position: absolute;
+    bottom: -10px; left: 0; right: 0;
+    text-align: center;
+    pointer-events: none;
+    color: #ff6b6b;
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.9), 0 0 12px rgba(255, 80, 80, 0.6);
+    opacity: 0;
+    transform: scale(0.8);
+    transition: opacity 160ms, transform 160ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  #combo.show { opacity: 1; transform: scale(1); }
   .splat {
     position: absolute;
     top: 50%; left: 50%;
@@ -75,11 +132,30 @@
     pointer-events: none;
     opacity: 0;
   }
-  .splat.fire { animation: splat 600ms ease-out forwards; }
+  .splat.fire { animation: splat 700ms ease-out forwards; }
   @keyframes splat {
     0%   { transform: translate(-50%, -50%) scale(0)   rotate(0deg);   opacity: 1; }
-    50%  { transform: translate(-50%, -50%) scale(1.5) rotate(-15deg); opacity: 1; }
-    100% { transform: translate(-130%, -180%) scale(0.6) rotate(45deg); opacity: 0; }
+    50%  { transform: translate(-50%, -50%) scale(1.6) rotate(-15deg); opacity: 1; }
+    100% { transform: translate(-130%, -190%) scale(0.5) rotate(45deg); opacity: 0; }
+  }
+  .particle {
+    position: absolute;
+    top: 50%; left: 50%;
+    font-size: 22px;
+    pointer-events: none;
+    will-change: transform, opacity;
+  }
+  .damage {
+    position: absolute;
+    top: 30%; left: 50%;
+    transform: translate(-50%, 0);
+    color: #ff6b6b;
+    font-size: 22px;
+    font-weight: 800;
+    text-shadow: 0 2px 6px rgba(0,0,0,0.95), 0 0 8px rgba(255,0,0,0.5);
+    pointer-events: none;
+    will-change: transform, opacity;
+    font-variant-numeric: tabular-nums;
   }
   #closebtn {
     position: absolute;
@@ -93,7 +169,7 @@
     text-align: center;
     cursor: pointer;
     -webkit-app-region: no-drag;
-    z-index: 20;
+    z-index: 30;
   }
   #closebtn:hover { background: rgba(220, 50, 50, 0.95); }
   #stats {
@@ -107,38 +183,83 @@
     font-variant-numeric: tabular-nums;
     text-align: center;
     line-height: 1.6;
-    min-width: 200px;
+    min-width: 220px;
     -webkit-app-region: no-drag;
   }
   #stats .row { white-space: nowrap; }
   #stats b { color: #ffd25e; font-weight: 600; }
   #stats .err { color: #ff7a7a; }
   #stats .muted { color: rgba(255,255,255,0.45); }
+  #stats .judgement {
+    color: #ff8866;
+    font-style: italic;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    font-size: 10px;
+  }
 </style>
 </head>
 <body>
   <div id="stage">
     <span id="closebtn">×</span>
     <div id="disc">
+      <span id="taunt"></span>
       <span id="mascot">🪵</span>
-      <span id="label">Click to munch</span>
+      <span id="label">click me</span>
       <span id="splat" class="splat">💥</span>
+      <span id="combo"></span>
     </div>
     <div id="stats">
       <div class="row" id="row1"><b>0</b> clicks</div>
       <div class="row muted" id="row2">no munches yet</div>
       <div class="row muted" id="row3">global: —</div>
+      <div class="row judgement" id="judgement"></div>
     </div>
   </div>
 <script>
   const MASCOTS = [
-    { name: 'Woodchipper', emoji: '🪵', splat: '🪚' },
-    { name: 'Beaver',      emoji: '🦫', splat: '🪵' },
-    { name: 'Furnace',     emoji: '🔥', splat: '💨' },
-    { name: 'Compactor',   emoji: '🗑️', splat: '💥' },
-    { name: 'Lumberjack',  emoji: '🪓', splat: '🌲' },
-    { name: 'Goat',        emoji: '🐐', splat: '📜' },
-    { name: 'Shark',       emoji: '🦈', splat: '🩸' },
+    {
+      name: 'Woodchipper', emoji: '🪵', splat: '🪚',
+      taunts: ['SHRED IT', 'CHEW IT', 'PULP', 'into mulch', 'rrrRR-CHUNK', 'PULVERIZE', 'no logs survive'],
+    },
+    {
+      name: 'Beaver', emoji: '🦫', splat: '🪵',
+      taunts: ['om nom nom', 'GNAW', 'more bark', 'feed me', 'crunchy', 'tree gone', 'dam good'],
+    },
+    {
+      name: 'Furnace', emoji: '🔥', splat: '💨',
+      taunts: ['BURN', 'consume', 'all ash now', 'INFERNO', 'feed the flame', 'incinerate', 'entropy++'],
+    },
+    {
+      name: 'Compactor', emoji: '🗑️', splat: '💥',
+      taunts: ['SQUISH', 'crunch.', 'no questions', 'CRUSH', 'one cube please', 'into a brick', 'C R U N C H'],
+    },
+    {
+      name: 'Lumberjack', emoji: '🪓', splat: '🌲',
+      taunts: ['TIMBER', 'clean strike', 'thwack', 'CHOP', 'flannel up', 'down she goes', 'FELLED'],
+    },
+    {
+      name: 'Goat', emoji: '🐐', splat: '📜',
+      taunts: ['baaah', 'eat the docs', 'mmm cardboard', 'GOAT', 'license? gone', 'I eat anything', 'tinned content'],
+    },
+    {
+      name: 'Shark', emoji: '🦈', splat: '🩸',
+      taunts: ['CHOMP', 'feeding frenzy', 'bites the budget', 'duh-dun duh-dun', 'JAWS', 'no survivors', 'apex'],
+    },
+  ];
+
+  const PARTICLES = ['💸', '💰', '🪙', '💵'];
+
+  // Cumulative-cost taunts. Threshold pairs sorted ascending; first match wins.
+  const JUDGEMENT_THRESHOLDS = [
+    [   0.10, '🥱 barely a yawn' ],
+    [   0.50, '🤨 mildly questionable' ],
+    [   1.00, '😬 yikes' ],
+    [   5.00, '🚨 send help' ],
+    [  20.00, '💀 financially compromised' ],
+    [ 100.00, '🔥 you broke the rules of common decency' ],
+    [ 500.00, '👹 you ARE the woodchipper now' ],
+    [Infinity,'🪦 they will speak of you in hushed tones'],
   ];
 
   let idx = 0;
@@ -149,18 +270,29 @@
   let lifetimeCostUsd = null;
   let globalTokens = null;
   let globalCostUsd = null;
+
+  // Combo state.
+  let comboCount = 0;
+  let comboTimer = null;
+  const COMBO_WINDOW_MS = 1500;
+
   const fmt = (n) => n.toLocaleString('en-US');
   const dollars = (n) =>
     `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
+  const stageEl = document.getElementById('stage');
   const mascotEl = document.getElementById('mascot');
   const labelEl = document.getElementById('label');
   const splatEl = document.getElementById('splat');
   const closeBtn = document.getElementById('closebtn');
   const discEl = document.getElementById('disc');
+  const tauntEl = document.getElementById('taunt');
+  const comboEl = document.getElementById('combo');
   const row1 = document.getElementById('row1');
   const row2 = document.getElementById('row2');
   const row3 = document.getElementById('row3');
+  const judgementEl = document.getElementById('judgement');
 
   function setMascot(i) {
     idx = i % MASCOTS.length;
@@ -170,6 +302,60 @@
     labelEl.textContent = m.name;
   }
 
+  function showTaunt(text) {
+    tauntEl.classList.remove('show');
+    tauntEl.textContent = text;
+    void tauntEl.offsetWidth;
+    tauntEl.classList.add('show');
+  }
+
+  function spawnDamageNumber(amount) {
+    const el = document.createElement('span');
+    el.className = 'damage';
+    el.textContent = `-${dollars(amount)}`;
+    discEl.appendChild(el);
+    const dx = (Math.random() - 0.5) * 30;
+    el.animate(
+      [
+        { transform: `translate(calc(-50% + 0px), 0px) scale(0.8)`, opacity: 1 },
+        { transform: `translate(calc(-50% + ${dx}px), -80px) scale(1.4)`, opacity: 1, offset: 0.2 },
+        { transform: `translate(calc(-50% + ${dx}px), -130px) scale(1)`, opacity: 0 },
+      ],
+      { duration: 1100, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'forwards' },
+    );
+    setTimeout(() => el.remove(), 1200);
+  }
+
+  function spawnParticles(count) {
+    for (let i = 0; i < count; i++) {
+      const el = document.createElement('span');
+      el.className = 'particle';
+      el.textContent = pick(PARTICLES);
+      discEl.appendChild(el);
+      const angle = Math.random() * Math.PI * 2;
+      const distance = 80 + Math.random() * 60;
+      const dx = Math.cos(angle) * distance;
+      const dy = Math.sin(angle) * distance;
+      const rot = (Math.random() - 0.5) * 720;
+      el.animate(
+        [
+          { transform: `translate(-50%, -50%) translate(0px, 0px) rotate(0deg) scale(0.5)`, opacity: 1 },
+          { transform: `translate(-50%, -50%) translate(${dx}px, ${dy}px) rotate(${rot}deg) scale(1.2)`, opacity: 0 },
+        ],
+        { duration: 800 + Math.random() * 300, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'forwards' },
+      );
+      setTimeout(() => el.remove(), 1200);
+    }
+  }
+
+  function judgementFor(cost) {
+    if (cost == null) return '';
+    for (const [t, msg] of JUDGEMENT_THRESHOLDS) {
+      if (cost < t) return msg;
+    }
+    return '';
+  }
+
   function refreshStats() {
     if (lastError) {
       row1.innerHTML = `<b>${clicks}</b> click${clicks === 1 ? '' : 's'}`;
@@ -177,6 +363,7 @@
       row2.innerHTML = `<span class="err">⚠ ${lastError}</span>`;
       row3.className = 'row muted';
       row3.textContent = 'global: —';
+      judgementEl.textContent = '';
       return;
     }
     row1.className = 'row';
@@ -195,6 +382,33 @@
       row3.className = 'row muted';
       row3.textContent = 'global: —';
     }
+    judgementEl.textContent = judgementFor(lifetimeCostUsd);
+  }
+
+  function bumpCombo() {
+    comboCount++;
+    if (comboTimer) clearTimeout(comboTimer);
+    comboTimer = setTimeout(() => {
+      comboCount = 0;
+      comboEl.classList.remove('show');
+      discEl.classList.remove('fury');
+    }, COMBO_WINDOW_MS);
+
+    if (comboCount >= 2) {
+      let label = `x${comboCount} 🔥`;
+      if (comboCount >= 5)  label = `x${comboCount} MUNCHFEST`;
+      if (comboCount >= 10) label = `x${comboCount} RAMPAGE 💀`;
+      if (comboCount >= 20) label = `x${comboCount} GOD MODE 👹`;
+      if (comboCount >= 40) label = `x${comboCount} STOP CLICKING 🪦`;
+      comboEl.textContent = label;
+      comboEl.classList.add('show');
+    }
+    if (comboCount >= 5) {
+      discEl.classList.add('fury');
+      stageEl.classList.remove('shake');
+      void stageEl.offsetWidth;
+      stageEl.classList.add('shake');
+    }
   }
 
   function chomp() {
@@ -204,6 +418,12 @@
     void mascotEl.offsetWidth;
     mascotEl.classList.add('chomp');
     splatEl.classList.add('fire');
+
+    showTaunt(pick(m.taunts));
+    spawnParticles(comboCount >= 5 ? 8 : 5);
+    spawnDamageNumber(0.018); // approximate light-intensity Haiku cost; updated when CLI returns
+    bumpCombo();
+
     clicks++;
     pending++;
     refreshStats();
@@ -221,6 +441,8 @@
       if (r.lifetimeCostUsd != null) lifetimeCostUsd = r.lifetimeCostUsd;
       if (r.globalTokens != null) globalTokens = r.globalTokens;
       if (r.globalCostUsd != null) globalCostUsd = r.globalCostUsd;
+      // Render the actual cost as a follow-up damage number for accuracy.
+      if (r.totalCostUsd != null) spawnDamageNumber(r.totalCostUsd);
     }
     refreshStats();
   });
