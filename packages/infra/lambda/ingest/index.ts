@@ -4,6 +4,10 @@ import {
   UpdateItemCommand,
   ConditionalCheckFailedException,
 } from '@aws-sdk/client-dynamodb';
+import {
+  SecretsManagerClient,
+  GetSecretValueCommand,
+} from '@aws-sdk/client-secrets-manager';
 import type { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from 'aws-lambda';
 import { verifyHmac } from '../shared/hmac.js';
 import { validateMunchEvent } from '../shared/validate.js';
@@ -14,6 +18,22 @@ import { KEYS, TABLE_NAME } from '../../lib/keys.js';
 
 const ddb = new DynamoDBClient({});
 const banCache = new BanCache(ddb, 60_000);
+const secrets = new SecretsManagerClient({});
+let cachedSecret: string | undefined;
+
+async function getHmacSecret(): Promise<string | undefined> {
+  if (cachedSecret) return cachedSecret;
+  const inline = process.env.HMAC_SECRET;
+  if (inline) {
+    cachedSecret = inline;
+    return cachedSecret;
+  }
+  const arn = process.env.HMAC_SECRET_ARN;
+  if (!arn) return undefined;
+  const out = await secrets.send(new GetSecretValueCommand({ SecretId: arn }));
+  cachedSecret = out.SecretString;
+  return cachedSecret;
+}
 
 const LEADERBOARD_DAILY_CAP = 10_000_000;
 
@@ -33,7 +53,7 @@ function isCcfe(err: unknown): boolean {
 }
 
 export const handler = async (event: APIGatewayProxyEventV2): Promise<APIGatewayProxyResultV2> => {
-  const secret = process.env.HMAC_SECRET;
+  const secret = await getHmacSecret();
   if (!secret) return reply(500, { ok: false, error: 'server misconfigured' });
 
   const sig = event.headers['x-om-sig'] ?? event.headers['X-OM-Sig'];
