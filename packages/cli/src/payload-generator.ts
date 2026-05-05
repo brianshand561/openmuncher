@@ -32,14 +32,20 @@ const FILLER_PARTS = [
   ['x', 'y', 'z'].map((c) => c.repeat(40)).join(' ') + '\n',
 ];
 
-function* mulberry32(seed: number) {
-  let t = seed >>> 0;
-  while (true) {
+/** Below this target, the payload is too small for the header — reject up front. */
+const MIN_TARGET_TOKENS = 200;
+
+/** Hard cap on grow-loop iterations as a defensive measure against tokenizer edge cases. */
+const MAX_GROW_ITERATIONS = 100_000;
+
+function makeRng(seed: string): () => number {
+  let t = seedToInt(seed) >>> 0;
+  return () => {
     t += 0x6d2b79f5;
     let r = Math.imul(t ^ (t >>> 15), 1 | t);
     r ^= r + Math.imul(r ^ (r >>> 7), 61 | r);
-    yield ((r ^ (r >>> 14)) >>> 0) / 4294967296;
-  }
+    return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+  };
 }
 
 function seedToInt(seed: string): number {
@@ -52,24 +58,55 @@ function seedToInt(seed: string): number {
 }
 
 export function generatePayload(opts: GenerateOptions): GeneratedPayload {
+  if (opts.targetInputTokens < MIN_TARGET_TOKENS) {
+    throw new Error(
+      `targetInputTokens must be at least ${MIN_TARGET_TOKENS} (got ${opts.targetInputTokens})`,
+    );
+  }
   const minWords = opts.instructedMinWords ?? 2000;
-  const rng = mulberry32(seedToInt(opts.seed));
+  const rng = makeRng(opts.seed);
   const target = opts.targetInputTokens;
   const lower = Math.floor(target * 0.95);
   const upper = Math.ceil(target * 1.05);
 
   let text = HEADER(minWords);
   let tokens = countTokens(text, opts.model);
+
+  // Grow phase: append fillers until we reach the lower bound.
+  let prev = -1;
+  let iter = 0;
   while (tokens < lower) {
-    const idx = Math.floor(rng.next().value! * FILLER_PARTS.length);
+    if (iter++ > MAX_GROW_ITERATIONS || tokens === prev) {
+      throw new Error(
+        `payload generator failed to grow: ${tokens} tokens after ${iter} iterations`,
+      );
+    }
+    prev = tokens;
+    const idx = Math.floor(rng() * FILLER_PARTS.length);
     text += FILLER_PARTS[idx]!;
     tokens = countTokens(text, opts.model);
   }
-  // If we overshoot the upper bound on a single append, trim from the end character-by-character.
-  // (Coarse but simple. Acceptable: we always overshoot by less than the longest filler line.)
-  while (tokens > upper) {
-    text = text.slice(0, -1);
-    tokens = countTokens(text, opts.model);
+
+  // Trim phase: chunk-then-refine. Halve the overshoot until we drop below upper,
+  // then snap back by re-adding small chunks if we went too far. Worst case is
+  // O(log(initial_overshoot)) tokenize calls, vs O(initial_overshoot) for char-by-char.
+  if (tokens > upper) {
+    let chunk = Math.max(1, Math.floor((tokens - upper) / 2));
+    while (tokens > upper) {
+      const newText = text.slice(0, Math.max(0, text.length - chunk));
+      const newTokens = countTokens(newText, opts.model);
+      if (newTokens < lower) {
+        // Trimmed too far — shrink the chunk and try again.
+        chunk = Math.max(1, Math.floor(chunk / 2));
+        if (chunk === 1 && newTokens < lower) {
+          // Unrecoverable: even 1-char trims drop us below lower. Use the larger version.
+          break;
+        }
+        continue;
+      }
+      text = newText;
+      tokens = newTokens;
+    }
   }
 
   return { text, instructedMinWords: minWords };

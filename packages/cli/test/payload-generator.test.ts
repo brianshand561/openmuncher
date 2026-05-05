@@ -39,4 +39,10 @@ describe('generatePayload', () => {
     const b = generatePayload({ targetInputTokens: 3000, model: 'claude-opus-4-7', seed: 's1' });
     expect(a.text).toBe(b.text);
   });
+
+  it('rejects too-small targets', () => {
+    expect(() =>
+      generatePayload({ targetInputTokens: 50, model: 'claude-opus-4-7', seed: 's' }),
+    ).toThrow(/at least/);
+  });
 });
