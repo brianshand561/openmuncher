@@ -23,4 +23,4 @@ jobs:
       - name: Run unit tests (excluding integration)
         run: npx vitest run --exclude '**/integration.test.ts'
       - name: Build CLI
-        run: npm run -w @openmuncher/cli build
+        run: npm run -w openmuncher build

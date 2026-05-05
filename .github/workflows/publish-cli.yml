@@ -42,7 +42,7 @@ jobs:
           EOF
 
       - name: Build
-        run: npm run -w @openmuncher/cli build
+        run: npm run -w openmuncher build
 
       - name: Publish
         working-directory: packages/cli
