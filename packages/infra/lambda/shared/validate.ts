@@ -20,11 +20,11 @@ function isObj(x: unknown): x is Record<string, unknown> {
   return typeof x === 'object' && x !== null;
 }
 
-function isInt(n: unknown, min: number, max: number): boolean {
+function isInt(n: unknown, min: number, max: number): n is number {
   return typeof n === 'number' && Number.isFinite(n) && Number.isInteger(n) && n >= min && n <= max;
 }
 
-function isFiniteNum(n: unknown, min: number, max: number): boolean {
+function isFiniteNum(n: unknown, min: number, max: number): n is number {
   return typeof n === 'number' && Number.isFinite(n) && n >= min && n <= max;
 }
 

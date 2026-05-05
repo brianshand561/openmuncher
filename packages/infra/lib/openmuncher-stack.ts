@@ -12,7 +12,7 @@ import {
   Table,
   ProjectionType,
 } from 'aws-cdk-lib/aws-dynamodb';
-import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
+import { NodejsFunction, OutputFormat } from 'aws-cdk-lib/aws-lambda-nodejs';
 import { Runtime, FunctionUrlAuthType, FunctionUrl } from 'aws-cdk-lib/aws-lambda';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import {
@@ -72,7 +72,7 @@ export class OpenMuncherStack extends Stack {
       bundling: {
         externalModules: ['@aws-sdk/*'],
         target: 'node20',
-        format: 'esm' as const,
+        format: OutputFormat.ESM,
         mainFields: ['module', 'main'],
         banner: "import { createRequire } from 'module'; const require = createRequire(import.meta.url);",
       },
