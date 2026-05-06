@@ -50,10 +50,9 @@ The leaderboard is best-effort and trivially cheatable. We apply basic deterrent
 | Rank | Wastrel | Tokens Burned | Money Incinerated | Munches |
 |------|---------|---------------|-------------------|---------|
 | 🥇 | brianshand561 | 178,603 | $3.67 | 6 |
-| 🥈 | brian | 8,510 | $0.02 | 1 |
 
 **Global counter:** 187,113 tokens · $3.68 incinerated.
-*Last updated: 2026-05-06T22:17:14.628Z*
+*Last updated: 2026-05-06T22:27:02.808Z*
 <!-- LEADERBOARD:END -->
 
 ## License
