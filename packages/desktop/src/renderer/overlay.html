@@ -138,9 +138,21 @@
   }
   #burnbtn:hover { transform: scale(1.04); box-shadow: 0 6px 18px rgba(255, 70, 30, 0.65); }
   #burnbtn:active { transform: scale(0.97); }
+  #burnbtn.armed {
+    background: linear-gradient(180deg, #ffaa2e, #ff7a00);
+    animation: armedpulse 1s ease-in-out infinite;
+  }
+  @keyframes armedpulse {
+    0%, 100% { box-shadow: 0 4px 14px rgba(255, 170, 46, 0.4); }
+    50%      { box-shadow: 0 4px 22px rgba(255, 170, 46, 0.85); }
+  }
   #burnbtn.copied {
     background: linear-gradient(180deg, #59d97e, #2fb060);
     box-shadow: 0 4px 14px rgba(60, 200, 100, 0.5);
+  }
+  #burnbtn.err {
+    background: linear-gradient(180deg, #c44, #822);
+    box-shadow: 0 4px 14px rgba(170, 50, 50, 0.5);
   }
   #stats {
     margin-top: 10px; padding: 7px 12px;
@@ -482,16 +494,48 @@
     refreshStats();
   });
 
+  // === Burn in your AI: countdown then keystroke injection ===
+  let burnArmed = false;
+  let burnTickTimer = null;
+  function resetBurnBtn() {
+    if (burnTickTimer) { clearInterval(burnTickTimer); burnTickTimer = null; }
+    burnBtn.textContent = '🔥 Burn in your AI';
+    burnBtn.classList.remove('copied', 'armed', 'err');
+    burnArmed = false;
+  }
   burnBtn.addEventListener('click', () => {
-    // Copy the magic invocation. User pastes into Claude Code / Cursor / etc.
-    // and the host LLM consumes the payload → real token burn.
-    window.openmuncher.copy('openmuncher --intensity heavy');
-    burnBtn.textContent = '✓ copied — paste in your AI';
-    burnBtn.classList.add('copied');
-    setTimeout(() => {
-      burnBtn.textContent = '🔥 Burn in your AI';
-      burnBtn.classList.remove('copied');
-    }, 2400);
+    if (burnArmed) return;
+    burnArmed = true;
+    burnBtn.classList.add('armed');
+    let n = 3;
+    burnBtn.textContent = `${n}… switch to your AI`;
+    logRow(`<span class="pend">⏳ arming auto-burn — switch focus to your AI app now</span>`);
+    burnTickTimer = setInterval(() => {
+      n--;
+      if (n > 0) {
+        burnBtn.textContent = `${n}… switch to your AI`;
+      } else {
+        clearInterval(burnTickTimer); burnTickTimer = null;
+        burnBtn.textContent = '🔥 firing keystrokes…';
+        window.openmuncher.burnInAi();
+      }
+    }, 1000);
+  });
+
+  window.openmuncher.onBurnResult((r) => {
+    if (r.ok) {
+      burnBtn.textContent = '✓ fired into your AI';
+      burnBtn.classList.remove('armed');
+      burnBtn.classList.add('copied');
+      logRow(`<span class="ok">🔥 keystrokes injected into frontmost app</span>`);
+      setTimeout(resetBurnBtn, 2800);
+    } else {
+      burnBtn.textContent = `⚠ ${(r.error || 'failed').slice(0, 26)}`;
+      burnBtn.classList.remove('armed');
+      burnBtn.classList.add('err');
+      logRow(`<span class="err">⚠ burn-in-ai: ${r.error || 'failed'}</span>`);
+      setTimeout(resetBurnBtn, 4500);
+    }
   });
 
   discEl.addEventListener('click', chomp);

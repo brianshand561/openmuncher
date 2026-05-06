@@ -10,7 +10,7 @@
 const { app, BrowserWindow, Tray, Menu, ipcMain, screen, nativeImage } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
-const { spawn } = require('node:child_process');
+const { spawn, execFile } = require('node:child_process');
 
 let tray = null;
 let overlay = null;
@@ -206,6 +206,51 @@ ipcMain.on('munch-clicked', (_event, mascotName) => {
 });
 
 ipcMain.on('overlay-dismiss', () => dismissOverlay());
+
+/**
+ * Inject `openmuncher --intensity heavy` as keystrokes into whatever app is
+ * frontmost. The renderer runs a 3-second countdown before calling this so the
+ * user can cmd-tab to their AI client. macOS uses osascript / System Events;
+ * Linux/Windows are not implemented in v0.1.
+ *
+ * macOS will prompt for Automation permission the first time. The prompt
+ * targets the parent process (Terminal during dev, Electron when packaged).
+ */
+ipcMain.on('burn-in-ai', () => {
+  log('burn-in-ai requested');
+  const send = (payload) => {
+    if (overlay && !overlay.isDestroyed()) {
+      overlay.webContents.send('burn-result', payload);
+    }
+  };
+  if (process.platform !== 'darwin') {
+    send({ ok: false, error: 'auto-burn only supported on macOS in v0.1' });
+    return;
+  }
+  // Make sure the overlay isn't the focused window when keystrokes go.
+  if (overlay && !overlay.isDestroyed()) overlay.blur();
+  const command = 'openmuncher --intensity heavy';
+  const script = [
+    'tell application "System Events"',
+    `  keystroke "${command}"`,
+    '  delay 0.12',
+    '  key code 36',
+    'end tell',
+  ].join('\n');
+  execFile('osascript', ['-e', script], (err, _stdout, stderr) => {
+    if (err) {
+      log('burn-in-ai osascript failed:', err.message, stderr);
+      // Common: permission denied (-1743). Surface a useful hint.
+      const hint = /not allowed assistive access|1002|1743|denied/i.test(`${err.message} ${stderr}`)
+        ? 'Grant Automation permission: System Settings → Privacy & Security → Automation → enable for your terminal/Electron'
+        : (stderr || err.message).slice(0, 120);
+      send({ ok: false, error: hint });
+      return;
+    }
+    log('burn-in-ai keystrokes sent');
+    send({ ok: true });
+  });
+});
 
 app.whenReady().then(() => {
   log('app ready, platform:', process.platform);
