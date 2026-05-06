@@ -1,5 +1,9 @@
 import { parseArgs } from 'node:util';
 import { homedir } from 'node:os';
+import { spawn } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+import { createRequire } from 'node:module';
 import { runMunch, type MunchArgs, type Intensity } from './munch.js';
 import { askNickname } from './prompts.js';
 import { runAnimation } from './animation.js';
@@ -9,7 +13,19 @@ import { KNOWN_MODELS } from '@openmuncher/shared';
 
 const VALID_INTENSITIES: ReadonlyArray<Intensity> = ['light', 'medium', 'heavy', 'nuclear'];
 
-function parse(): MunchArgs & { animation: boolean } {
+interface ParsedArgs {
+  tokens?: number;
+  model?: ModelId;
+  intensity?: Intensity;
+  animation: boolean;
+  /** True when the user passed any burn-related flag (or `munch` subcommand). */
+  isCli: boolean;
+}
+
+function parse(): ParsedArgs {
+  const positional = process.argv.slice(2).filter((a) => !a.startsWith('-'));
+  const explicitMunch = positional[0] === 'munch';
+
   const { values } = parseArgs({
     options: {
       tokens: { type: 'string' },
@@ -41,11 +57,32 @@ function parse(): MunchArgs & { animation: boolean } {
     intensity = values.intensity as Intensity;
   }
 
-  return { tokens, model, intensity, animation: !values['no-animation'] };
+  const hasBurnFlag = tokens !== undefined || model !== undefined || intensity !== undefined;
+  const isCli = explicitMunch || hasBurnFlag;
+
+  return { tokens, model, intensity, animation: !values['no-animation'], isCli };
 }
 
-async function main() {
-  const argv = parse();
+/**
+ * No burn flags → launch the Electron desktop tray app. The desktop app
+ * itself runs with no arguments after the spawn point. We use createRequire
+ * to resolve electron at runtime even though we're an ESM bundle.
+ */
+function launchDesktop(): void {
+  const require = createRequire(import.meta.url);
+  // electron's `main` exports the path to its launcher executable.
+  const electronPath = require('electron') as string;
+  const here = dirname(fileURLToPath(import.meta.url));
+  // Bundled file lives in dist/index.js; desktop assets live in ../desktop.
+  const desktopMain = join(here, '..', 'desktop', 'main', 'index.js');
+  const child = spawn(electronPath, [desktopMain], {
+    stdio: 'inherit',
+    detached: false,
+  });
+  child.on('close', (code) => process.exit(code ?? 0));
+}
+
+async function runCli(argv: ParsedArgs) {
   const result = await runMunch({
     home: homedir(),
     env: process.env,
@@ -72,6 +109,15 @@ async function main() {
     mascot: result.mascot,
   });
   process.stdout.write(rendered);
+}
+
+async function main() {
+  const argv = parse();
+  if (argv.isCli) {
+    await runCli(argv);
+  } else {
+    launchDesktop();
+  }
 }
 
 main().catch((err) => {

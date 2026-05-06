@@ -8,4 +8,6 @@ export default defineConfig({
   clean: true,
   banner: { js: '#!/usr/bin/env node' },
   noExternal: ['@openmuncher/shared'],
+  // Electron is loaded at runtime via createRequire, not bundled.
+  external: ['electron'],
 });

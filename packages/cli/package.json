@@ -1,17 +1,27 @@
 {
   "name": "openmuncher",
-  "version": "0.2.0",
-  "description": "Burn AI tokens deliberately for spectacle",
+  "version": "1.0.0",
+  "description": "A deliberate AI token-burning desktop app + CLI",
   "type": "module",
   "bin": { "openmuncher": "dist/index.js" },
   "main": "dist/index.js",
-  "files": ["dist"],
+  "files": ["dist", "desktop"],
+  "os": [
+    "darwin",
+    "linux",
+    "win32"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "build": "tsup",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "start:desktop": "electron desktop/main/index.js"
   },
   "dependencies": {
     "@anthropic-ai/tokenizer": "^0.0.4",
+    "electron": "^33.0.0",
     "tiktoken": "^1.0.0",
     "prompts": "^2.4.2"
   },

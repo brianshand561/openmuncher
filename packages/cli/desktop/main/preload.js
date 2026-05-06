@@ -7,4 +7,8 @@ contextBridge.exposeInMainWorld('openmuncher', {
   copy: (text) => clipboard.writeText(text),
   burnInAi: () => ipcRenderer.send('burn-in-ai'),
   onBurnResult: (cb) => ipcRenderer.on('burn-result', (_e, payload) => cb(payload)),
+  getTargetApp: () => ipcRenderer.invoke('get-target-app'),
+  setTargetApp: (name) => ipcRenderer.send('set-target-app', name),
+  detectTargets: () => ipcRenderer.invoke('detect-targets'),
+  readCliConfig: () => ipcRenderer.invoke('read-cli-config'),
 });

@@ -1,6 +1,6 @@
 # 🪵 OpenMuncher
 
-OpenMuncher is a CLI that deliberately wastes AI tokens for spectacle. Run it inside Claude Code, Windsurf, or any agent-on-a-terminal — it will burn the host LLM's tokens and report the cost.
+OpenMuncher is a desktop tray app + CLI that deliberately wastes AI tokens for spectacle. Click the tray's munch button → OpenMuncher opens a terminal, starts Claude Code, and types in a token-burning command — Claude reads a giant junk payload as tool output, and your API key pays for it.
 
 ## Install
 
@@ -8,15 +8,29 @@ OpenMuncher is a CLI that deliberately wastes AI tokens for spectacle. Run it in
 npm install -g openmuncher
 ```
 
+(Bundles Electron, ~150MB.)
+
 ## Usage
 
+**Desktop (default)**
+
 ```
-openmuncher                                # default: random 5K–25K input tokens
+openmuncher
+```
+
+A 🪵 appears in your menu bar. Click it → click the munch gif → tokens burn in Claude Code.
+
+**CLI mode (any burn flag triggers it)**
+
+```
 openmuncher --intensity heavy              # 50K tokens
 openmuncher --tokens 100000                # exact target
 openmuncher --model claude-sonnet-4-6      # override model detection
 openmuncher --no-animation                 # skip the woodchipper
+openmuncher munch                          # explicit subcommand
 ```
+
+The CLI is what gets run inside Claude Code when the desktop app types its keystrokes — so the same binary does both jobs. You can also invoke the CLI directly inside any agentic terminal session (Claude Code, Cursor, Windsurf, Gemini, etc.) for an immediate burn.
 
 The CLI auto-detects which model is paying via env vars (`CLAUDE_CODE_MODEL`, `ANTHROPIC_MODEL`, etc.). If detection fails it assumes Claude Opus, because that's funnier.
 

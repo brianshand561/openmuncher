@@ -1,0 +1,445 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>OpenMuncher</title>
+<style>
+  html, body {
+    margin: 0; padding: 0;
+    width: 100%; height: 100%;
+    background: transparent;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  #stage {
+    position: relative;
+    width: 300px; height: 360px;
+    -webkit-app-region: drag;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 22px 14px 12px;
+    box-sizing: border-box;
+  }
+  #stage.shake { animation: shake 220ms cubic-bezier(.36,.07,.19,.97) both; }
+  @keyframes shake {
+    10%, 90% { transform: translate(-1px, 0); }
+    20%, 80% { transform: translate(2px, 0); }
+    30%, 50%, 70% { transform: translate(-4px, 1px); }
+    40%, 60% { transform: translate(4px, -1px); }
+  }
+  #disc {
+    width: 200px; height: 200px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(40,40,40,0.92), rgba(20,20,20,0.85));
+    box-shadow: 0 12px 40px rgba(0,0,0,0.55), inset 0 0 0 2px rgba(255,255,255,0.1);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    -webkit-app-region: no-drag;
+    transition: transform 120ms cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 120ms;
+    position: relative; overflow: hidden;
+  }
+  #disc:hover { transform: scale(1.04); box-shadow: 0 16px 50px rgba(0,0,0,0.7), inset 0 0 0 2px rgba(255,255,255,0.18); }
+  #disc:active { transform: scale(0.96); }
+  #disc.fury {
+    box-shadow: 0 16px 60px rgba(255, 80, 80, 0.55), inset 0 0 0 3px rgba(255, 200, 80, 0.55);
+    animation: pulse 600ms ease-in-out infinite alternate;
+  }
+  @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.025); } }
+  #mascot {
+    width: 180px; height: 180px;
+    object-fit: cover;
+    border-radius: 50%;
+    pointer-events: none;
+    transition: transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  #disc.chomping #mascot { transform: scale(1.12); }
+  #taunt {
+    position: absolute; top: -4px; left: 0; right: 0; text-align: center;
+    color: #ffd25e; font-size: 16px; font-weight: 800;
+    text-transform: uppercase; letter-spacing: 1px;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.95), 0 0 12px rgba(0,0,0,0.7);
+    opacity: 0; pointer-events: none;
+    z-index: 5;
+  }
+  #taunt.show { animation: tauntpop 1100ms ease-out forwards; }
+  @keyframes tauntpop {
+    0%   { transform: translateY(8px)  scale(0.7); opacity: 0; }
+    15%  { transform: translateY(-4px) scale(1.2); opacity: 1; }
+    70%  { transform: translateY(-12px) scale(1);   opacity: 1; }
+    100% { transform: translateY(-32px) scale(0.95); opacity: 0; }
+  }
+  #combo {
+    position: absolute; bottom: -2px; left: 0; right: 0; text-align: center;
+    pointer-events: none;
+    color: #ff6b6b; font-size: 18px; font-weight: 800; letter-spacing: 1.5px;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.95), 0 0 14px rgba(255, 80, 80, 0.7);
+    opacity: 0; transform: scale(0.8);
+    transition: opacity 160ms, transform 160ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    z-index: 5;
+  }
+  #combo.show { opacity: 1; transform: scale(1); }
+  .particle {
+    position: absolute; top: 50%; left: 50%; font-size: 22px;
+    pointer-events: none; will-change: transform, opacity;
+    z-index: 4;
+  }
+  .damage {
+    position: absolute; top: 30%; left: 50%; transform: translate(-50%, 0);
+    color: #ff6b6b; font-size: 22px; font-weight: 800;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.95), 0 0 10px rgba(255,0,0,0.6);
+    pointer-events: none; will-change: transform, opacity;
+    font-variant-numeric: tabular-nums;
+    z-index: 6;
+  }
+  #closebtn {
+    position: absolute; top: 4px; right: 4px;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: rgba(0,0,0,0.7); color: #fff;
+    font-size: 14px; line-height: 22px; text-align: center;
+    cursor: pointer; -webkit-app-region: no-drag; z-index: 30;
+  }
+  #closebtn:hover { background: rgba(220, 50, 50, 0.95); }
+  #stats {
+    margin-top: 14px; padding: 7px 12px;
+    border-radius: 12px;
+    background: rgba(15, 15, 15, 0.92);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.08);
+    color: #d4d4d4; font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    text-align: center; line-height: 1.55;
+    width: 240px; box-sizing: border-box;
+    -webkit-app-region: no-drag;
+  }
+  #stats .row { white-space: nowrap; }
+  #stats b { color: #ffd25e; font-weight: 600; }
+  #stats .err { color: #ff7a7a; }
+  #stats .muted { color: rgba(255,255,255,0.45); }
+  #stats .judgement {
+    color: #ff8866; font-style: italic; text-transform: uppercase;
+    letter-spacing: 1.5px; font-size: 10px;
+  }
+</style>
+</head>
+<body>
+  <div id="stage">
+    <span id="closebtn">×</span>
+    <div id="disc">
+      <span id="taunt"></span>
+      <img id="mascot" src="../assets/munch-still.png" alt="munch" data-still="../assets/munch-still.png" data-gif="../assets/munch.gif" />
+      <span id="combo"></span>
+    </div>
+    <div id="stats">
+      <div class="row" id="row1"><b>0</b> clicks</div>
+      <div class="row muted" id="row2">no munches yet</div>
+      <div class="row muted" id="row3">global: —</div>
+      <div class="row judgement" id="judgement"></div>
+    </div>
+  </div>
+<script>
+  const TAUNTS = [
+    'MUNCH', 'OM NOM', 'CHOMP', 'SHRED', 'CRUNCH',
+    'BURN', 'GNAW', 'PULP', 'INFERNO', 'feed me',
+    'more please', 'devour', 'incinerate', 'TIMBER',
+    'into the void', 'no survivors', 'JAWS',
+    'C R U N C H', 'pulverize', 'feast time',
+  ];
+  const PARTICLES = ['💸', '💰', '🪙', '💵'];
+  const SOUND = { type: 'thud', dur: 0.18, freq: 110, decay: 0.4 };
+
+  const JUDGEMENT_THRESHOLDS = [
+    [   0.10, '🥱 barely a yawn' ],
+    [   0.50, '🤨 mildly questionable' ],
+    [   1.00, '😬 yikes' ],
+    [   5.00, '🚨 send help' ],
+    [  20.00, '💀 financially compromised' ],
+    [ 100.00, '🔥 you broke common decency' ],
+    [ 500.00, '👹 you ARE the woodchipper now' ],
+    [Infinity,'🪦 they will speak of you in hushed tones'],
+  ];
+
+  let clicks = 0;
+  let pending = 0;
+  let lastError = null;
+  // Real values polled from ~/.openmuncher/config.json (the CLI updates them
+  // after each run that completes successfully). null until first poll lands.
+  let cliLifetimeTokens = null;
+  let cliLifetimeCostUsd = null;
+  let cliGlobalTokens = null;
+  let cliGlobalCostUsd = null;
+  let comboCount = 0;
+  let comboTimer = null;
+  const COMBO_WINDOW_MS = 1500;
+
+  const fmt = (n) => n.toLocaleString('en-US');
+  const dollars = (n) => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const dollars4 = (n) => `$${n.toFixed(4)}`;
+  const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+  const stageEl = document.getElementById('stage');
+  const closeBtn = document.getElementById('closebtn');
+  const discEl = document.getElementById('disc');
+  const tauntEl = document.getElementById('taunt');
+  const comboEl = document.getElementById('combo');
+  const row1 = document.getElementById('row1');
+  const row2 = document.getElementById('row2');
+  const row3 = document.getElementById('row3');
+  const judgementEl = document.getElementById('judgement');
+
+  // === procedural chomp sound ===
+  let audioCtx = null;
+  function getAudio() {
+    if (!audioCtx) {
+      try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+      catch { return null; }
+    }
+    return audioCtx;
+  }
+  function playSound(spec) {
+    const ctx = getAudio();
+    if (!ctx) return;
+    const t0 = ctx.currentTime;
+    const gain = ctx.createGain();
+    gain.connect(ctx.destination);
+    gain.gain.setValueAtTime(0.18, t0);
+    gain.gain.exponentialRampToValueAtTime(0.001, t0 + spec.dur);
+    const bufSize = Math.floor(ctx.sampleRate * spec.dur);
+    const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < bufSize; i++) {
+      const env = Math.pow(1 - i / bufSize, spec.decay);
+      data[i] = (Math.random() * 2 - 1) * env;
+    }
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const filt = ctx.createBiquadFilter();
+    filt.type = 'lowpass';
+    filt.frequency.setValueAtTime(spec.freq, t0);
+    src.connect(filt); filt.connect(gain);
+    src.start(t0); src.stop(t0 + spec.dur);
+  }
+
+  function showTaunt(text) {
+    tauntEl.classList.remove('show');
+    tauntEl.textContent = text;
+    void tauntEl.offsetWidth;
+    tauntEl.classList.add('show');
+  }
+
+  function spawnDamageNumber(amount, big = false) {
+    const el = document.createElement('span');
+    el.className = 'damage';
+    el.textContent = `-${dollars(amount)}`;
+    if (big) el.style.fontSize = '30px';
+    discEl.appendChild(el);
+    const dx = (Math.random() - 0.5) * 30;
+    el.animate(
+      [
+        { transform: `translate(calc(-50% + 0px), 0px) scale(0.8)`, opacity: 1 },
+        { transform: `translate(calc(-50% + ${dx}px), -80px) scale(1.4)`, opacity: 1, offset: 0.2 },
+        { transform: `translate(calc(-50% + ${dx}px), -130px) scale(1)`, opacity: 0 },
+      ],
+      { duration: 1100, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'forwards' },
+    );
+    setTimeout(() => el.remove(), 1200);
+  }
+
+  function spawnParticles(count) {
+    for (let i = 0; i < count; i++) {
+      const el = document.createElement('span');
+      el.className = 'particle';
+      el.textContent = pick(PARTICLES);
+      discEl.appendChild(el);
+      const angle = Math.random() * Math.PI * 2;
+      const distance = 80 + Math.random() * 60;
+      const dx = Math.cos(angle) * distance;
+      const dy = Math.sin(angle) * distance;
+      const rot = (Math.random() - 0.5) * 720;
+      el.animate(
+        [
+          { transform: `translate(-50%, -50%) translate(0px, 0px) rotate(0deg) scale(0.5)`, opacity: 1 },
+          { transform: `translate(-50%, -50%) translate(${dx}px, ${dy}px) rotate(${rot}deg) scale(1.2)`, opacity: 0 },
+        ],
+        { duration: 800 + Math.random() * 300, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'forwards' },
+      );
+      setTimeout(() => el.remove(), 1200);
+    }
+  }
+
+  function judgementFor(cost) {
+    if (cost == null) return '';
+    for (const [t, msg] of JUDGEMENT_THRESHOLDS) if (cost < t) return msg;
+    return '';
+  }
+
+  function refreshStats() {
+    if (lastError) {
+      row1.innerHTML = `<b>${clicks}</b> click${clicks === 1 ? '' : 's'}`;
+      row2.className = 'row';
+      row2.innerHTML = `<span class="err">⚠ ${lastError}</span>`;
+      row3.className = 'row muted';
+      row3.textContent = '';
+      judgementEl.textContent = '';
+      return;
+    }
+    row1.className = 'row';
+    row1.innerHTML = `<b>${clicks}</b> click${clicks === 1 ? '' : 's'}`;
+    // Prefer real CLI lifetime totals when available.
+    if (cliLifetimeTokens != null && cliLifetimeCostUsd != null) {
+      row2.className = 'row';
+      row2.innerHTML = `${fmt(cliLifetimeTokens)} tokens · ${dollars(cliLifetimeCostUsd)}`;
+      if (cliGlobalTokens != null) {
+        row3.className = 'row muted';
+        row3.innerHTML = `global: ${fmt(cliGlobalTokens)}` +
+          (cliGlobalCostUsd != null ? ` · ${dollars(cliGlobalCostUsd)}` : '');
+      } else {
+        row3.className = 'row muted';
+        row3.textContent = 'global: —';
+      }
+      judgementEl.textContent = judgementFor(cliLifetimeCostUsd);
+      return;
+    }
+    // No CLI config yet — show neutral placeholder.
+    if (clicks === 0) {
+      row2.className = 'row muted';
+      row2.textContent = 'click the muncher to begin';
+      row3.className = 'row muted';
+      row3.textContent = '';
+      judgementEl.textContent = '';
+      return;
+    }
+    row2.className = 'row muted';
+    row2.textContent = 'waiting for first claude run…';
+    row3.className = 'row muted';
+    row3.textContent = '';
+    judgementEl.textContent = '';
+  }
+
+  // Poll ~/.openmuncher/config.json so the panel reflects what Claude Code
+  // actually accomplished, not just clicks. Every increase in lifetimeTokens
+  // marks one outstanding burn as complete (which lets the gif stop animating
+  // when all clicks have landed real CLI runs).
+  let pollSeenLifetime = null;
+  async function pollCliConfig() {
+    try {
+      const cfg = await window.openmuncher.readCliConfig();
+      if (!cfg) return;
+      cliLifetimeTokens = cfg.lifetimeTokens;
+      cliLifetimeCostUsd = cfg.lifetimeCostUsd;
+      cliGlobalTokens = cfg.lastGlobalTokens;
+      cliGlobalCostUsd = cfg.lastGlobalCostUsd;
+      // Detect a brand-new run: lifetimeTokens advanced since last poll.
+      if (pollSeenLifetime != null && cfg.lifetimeTokens != null && cfg.lifetimeTokens > pollSeenLifetime) {
+        burnsCompleted++;
+      }
+      pollSeenLifetime = cfg.lifetimeTokens;
+      refreshStats();
+    } catch {}
+  }
+  pollCliConfig();
+  // Poll quickly so the gif stops promptly when the CLI run lands.
+  setInterval(pollCliConfig, 1500);
+
+  function bumpCombo() {
+    comboCount++;
+    if (comboTimer) clearTimeout(comboTimer);
+    comboTimer = setTimeout(() => {
+      comboCount = 0;
+      comboEl.classList.remove('show');
+      discEl.classList.remove('fury');
+    }, COMBO_WINDOW_MS);
+
+    if (comboCount >= 2) {
+      let label = `x${comboCount} 🔥`;
+      if (comboCount >= 5)  label = `x${comboCount} MUNCHFEST`;
+      if (comboCount >= 10) label = `x${comboCount} RAMPAGE 💀`;
+      if (comboCount >= 20) label = `x${comboCount} GOD MODE 👹`;
+      if (comboCount >= 40) label = `x${comboCount} STOP CLICKING 🪦`;
+      comboEl.textContent = label;
+      comboEl.classList.add('show');
+    }
+    if (comboCount >= 5) {
+      discEl.classList.add('fury');
+      stageEl.classList.remove('shake');
+      void stageEl.offsetWidth;
+      stageEl.classList.add('shake');
+    }
+  }
+
+  // Gif play/pause: default to still PNG. On click, swap to live gif. The
+  // gif keeps playing as long as there are outstanding burns (clicks for which
+  // the CLI hasn't yet recorded a new lifetime-tokens reading), bounded by a
+  // 180s hard cap as failsafe in case the CLI signal never arrives.
+  const mascotEl = document.getElementById('mascot');
+  const STILL_SRC = mascotEl.dataset.still;
+  const GIF_SRC = mascotEl.dataset.gif;
+  const MAX_PLAY_MS = 180_000;
+  let burnsStarted = 0;
+  let burnsCompleted = 0;
+  let mascotMaxStopAt = 0;
+  let mascotIsPlaying = false;
+  function startMascot() {
+    burnsStarted++;
+    mascotMaxStopAt = Date.now() + MAX_PLAY_MS;
+    if (!mascotIsPlaying) {
+      mascotEl.src = `${GIF_SRC}?t=${Date.now()}`;
+      mascotIsPlaying = true;
+    }
+  }
+  function stopMascot() {
+    if (mascotIsPlaying) {
+      mascotEl.src = STILL_SRC;
+      mascotIsPlaying = false;
+    }
+  }
+  // Tick: stop the gif when all started burns have completed, OR when the
+  // hard timeout has elapsed.
+  setInterval(() => {
+    if (!mascotIsPlaying) return;
+    const allDone = burnsCompleted >= burnsStarted;
+    const timedOut = Date.now() > mascotMaxStopAt;
+    if (allDone || timedOut) stopMascot();
+  }, 500);
+
+  function chomp() {
+    discEl.classList.remove('chomping');
+    void discEl.offsetWidth;
+    discEl.classList.add('chomping');
+    setTimeout(() => discEl.classList.remove('chomping'), 220);
+
+    startMascot();
+    showTaunt(pick(TAUNTS));
+    spawnParticles(comboCount >= 5 ? 8 : 5);
+    spawnDamageNumber(0.018, comboCount >= 10);
+    playSound(SOUND);
+    bumpCombo();
+
+    clicks++;
+    pending++;
+    refreshStats();
+
+    // One effect per click: keystroke injection into Terminal + Claude Code.
+    window.openmuncher.burnInAi();
+  }
+
+  // Burn-in-AI result handler — surface errors in the stats panel.
+  window.openmuncher.onBurnResult((r) => {
+    if (r.ok) {
+      lastError = null;
+    } else {
+      lastError = r.error || 'burn failed';
+    }
+    refreshStats();
+  });
+
+  discEl.addEventListener('click', chomp);
+  closeBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    window.openmuncher.dismiss();
+  });
+  refreshStats();
+</script>
+</body>
+</html>
