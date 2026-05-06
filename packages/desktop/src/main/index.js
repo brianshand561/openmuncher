@@ -44,7 +44,11 @@ function createOverlay() {
     alwaysOnTop: true,
     resizable: false,
     movable: true, // user can drag it
-    focusable: true,
+    // CRITICAL: focusable: false → mouse clicks still register but the overlay
+    // never steals keyboard focus from the user's AI app. Required for the
+    // auto-burn flow to inject keystrokes into the right target.
+    focusable: false,
+    acceptFirstMouse: true,
     skipTaskbar: true,
     hasShadow: false,
     webPreferences: {
@@ -227,28 +231,61 @@ ipcMain.on('burn-in-ai', () => {
     send({ ok: false, error: 'auto-burn only supported on macOS in v0.1' });
     return;
   }
-  // Make sure the overlay isn't the focused window when keystrokes go.
-  if (overlay && !overlay.isDestroyed()) overlay.blur();
-  const command = 'openmuncher --intensity heavy';
-  const script = [
+
+  // Capture which app is currently frontmost BEFORE we run the keystroke
+  // script. If it's our own app, fail loudly instead of typing into ourselves.
+  const probe = [
     'tell application "System Events"',
-    `  keystroke "${command}"`,
-    '  delay 0.12',
-    '  key code 36',
+    '  set frontApp to name of first application process whose frontmost is true',
     'end tell',
+    'return frontApp',
   ].join('\n');
-  execFile('osascript', ['-e', script], (err, _stdout, stderr) => {
-    if (err) {
-      log('burn-in-ai osascript failed:', err.message, stderr);
-      // Common: permission denied (-1743). Surface a useful hint.
-      const hint = /not allowed assistive access|1002|1743|denied/i.test(`${err.message} ${stderr}`)
-        ? 'Grant Automation permission: System Settings → Privacy & Security → Automation → enable for your terminal/Electron'
-        : (stderr || err.message).slice(0, 120);
+
+  execFile('osascript', ['-e', probe], (probeErr, probeStdout, probeStderr) => {
+    if (probeErr) {
+      log('frontmost-app probe failed:', probeErr.message, probeStderr);
+      const denied = /not authoriz|not allowed assistive|1002|1743|denied|-1743/i.test(
+        `${probeErr.message} ${probeStderr}`,
+      );
+      const hint = denied
+        ? 'Permission denied. Open System Settings → Privacy & Security → Automation → expand your terminal app → enable "System Events". Or relaunch via packaged app.'
+        : (probeStderr || probeErr.message).slice(0, 160);
       send({ ok: false, error: hint });
       return;
     }
-    log('burn-in-ai keystrokes sent');
-    send({ ok: true });
+    const frontApp = probeStdout.trim();
+    log('frontmost app at fire time:', frontApp);
+    if (/electron|openmuncher/i.test(frontApp)) {
+      send({
+        ok: false,
+        error: `Frontmost is "${frontApp}" — switch to your AI app DURING the countdown so keystrokes go there.`,
+      });
+      return;
+    }
+
+    const command = 'openmuncher --intensity heavy';
+    const script = [
+      'tell application "System Events"',
+      `  keystroke "${command}"`,
+      '  delay 0.12',
+      '  key code 36',
+      'end tell',
+    ].join('\n');
+    execFile('osascript', ['-e', script], (err, _stdout, stderr) => {
+      if (err) {
+        log('keystroke osascript failed:', err.message, stderr);
+        const denied = /not authoriz|not allowed assistive|1002|1743|denied|-1743/i.test(
+          `${err.message} ${stderr}`,
+        );
+        const hint = denied
+          ? 'Permission denied for System Events. System Settings → Privacy & Security → Automation.'
+          : (stderr || err.message).slice(0, 160);
+        send({ ok: false, error: hint });
+        return;
+      }
+      log(`keystrokes sent into "${frontApp}"`);
+      send({ ok: true, frontApp });
+    });
   });
 });
 
