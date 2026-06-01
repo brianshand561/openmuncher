@@ -52,7 +52,7 @@ The leaderboard is best-effort and trivially cheatable. We apply basic deterrent
 | 🥇 | brianshand561 | 229,650 | $4.64 | 7 |
 
 **Global counter:** 238,160 tokens · $4.66 incinerated.
-*Last updated: 2026-05-31T23:22:42.833Z*
+*Last updated: 2026-06-01T00:35:13.361Z*
 <!-- LEADERBOARD:END -->
 
 ## License
